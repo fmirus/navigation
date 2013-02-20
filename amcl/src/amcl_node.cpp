@@ -214,6 +214,8 @@ class AmclNode
     double init_cov_[3];
     laser_model_t laser_model_type_;
 
+    int use_mean_;
+
     void reconfigureCB(amcl::AMCLConfig &config, uint32_t level);
 };
 
@@ -253,6 +255,8 @@ AmclNode::AmclNode() :
   // Grab params off the param server
   private_nh_.param("use_map_topic", use_map_topic_, false);
   private_nh_.param("first_map_only", first_map_only_, false);
+
+  private_nh_.param("use_mean", use_mean_, 1);
 
   double tmp;
   private_nh_.param("gui_publish_rate", tmp, -1.0);
@@ -856,6 +860,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   }
 
   bool resampled = false;
+  double pose_median_x;
+  double pose_median_y;
+  double pose_median_theta;
   // If the robot has moved, update the filter
   if(lasers_update_[laser_index])
   {
@@ -942,14 +949,36 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     cloud_msg.header.stamp = ros::Time::now();
     cloud_msg.header.frame_id = global_frame_id_;
     cloud_msg.poses.resize(set->sample_count);
+    std::vector<double> median_x;
+    std::vector<double> median_y;
+    std::vector<double> median_theta;
     for(int i=0;i<set->sample_count;i++)
     {
       tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
                                btVector3(set->samples[i].pose.v[0],
                                          set->samples[i].pose.v[1], 0)),
                       cloud_msg.poses[i]);
+      // save hyp means in vector
+      median_x.push_back(set->sample[i].pose.v[0]);
+      median_y.push_back(set->sample[i].pose.v[1]);
+      median_theta.push_back(set->sample[i].pose.v[2]);
 
     }
+    // sort hyp means
+    std::sort(median_x.begin(),median_x.end());
+    std::sort(median_y.begin(),median_y.end());
+    std::sort(median_theta.begin(),median_theta.end());
+    int tot_num = set->sample_count;
+    if(tot_num % 2 == 0){
+      pose_median_x = (median_x[tot_num/2] + median_x[tot_num/2+1])/2;
+      pose_median_y = (median_y[tot_num/2] + median_y[tot_num/2+1])/2;
+      pose_median_theta = (median_theta[tot_num/2] + median_theta[tot_num/2+1])/2;
+    }
+    else{
+      pose_median_x = median_x[(tot_num + 1)/2];
+      pose_median_y = median_y[(tot_num + 1)/2];
+      pose_median_theta = median_theta[(tot_num + 1)/2];
+   }
 
     particlecloud_pub_.publish(cloud_msg);
   }
@@ -972,7 +1001,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         ROS_ERROR("Couldn't get stats on cluster %d", hyp_count);
         break;
       }
-
+  
       hyps[hyp_count].weight = weight;
       hyps[hyp_count].pf_pose_mean = pose_mean;
       hyps[hyp_count].pf_pose_cov = pose_cov;
@@ -983,7 +1012,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         max_weight_hyp = hyp_count;
       }
     }
-
+  
     if(max_weight > 0.0)
     {
       ROS_DEBUG("Max weight pose: %.3f %.3f %.3f",
@@ -1001,11 +1030,19 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = laser_scan->header.stamp;
+      if(use_mean_==1){
       // Copy in the pose
       p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
       p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
       tf::quaternionTFToMsg(tf::createQuaternionFromYaw(hyps[max_weight_hyp].pf_pose_mean.v[2]),
                             p.pose.pose.orientation);
+      }
+      else{
+        p.pose.pose.position.x = pose_median_x;
+        p.pose.pose.position.y = pose_median_y;
+        tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_median_theta),
+                            p.pose.pose.orientation);
+     }
       // Copy in the covariance, converting from 3-D to 6-D
       pf_sample_set_t* set = pf_->sets + pf_->current_set;
       for(int i=0; i<2; i++)
