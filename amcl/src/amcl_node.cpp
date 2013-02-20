@@ -952,6 +952,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     std::vector<double> median_x;
     std::vector<double> median_y;
     std::vector<double> median_theta;
+    median_x.reserve(set->sample_count);
+    median_y.reserve(set->sample_count);
+    median_theta.reserve(set->sample_count);
     for(int i=0;i<set->sample_count;i++)
     {
       tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
@@ -978,12 +981,14 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       pose_median_x = median_x[(tot_num + 1)/2];
       pose_median_y = median_y[(tot_num + 1)/2];
       pose_median_theta = median_theta[(tot_num + 1)/2];
-   }
+    }
+    //wrapping theta to [-pi,pi]
+    pose_median_theta = fmod(pose_median_theta+5*M_PI,2*M_PI)-M_PI;
 
     particlecloud_pub_.publish(cloud_msg);
   }
 
-  if(resampled || force_publication)
+  if(resampled || force_publication || true)
   {
     // Read out the current hypotheses
     double max_weight = 0.0;
@@ -1043,9 +1048,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_median_theta),
                             p.pose.pose.orientation);
       }
-      ROS_INFO("mean: %f %f %f median %f %f %f", 
-                hyps[max_weight_hyp].pf_pose_mean.v[0], hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2],
-                pose_median_x, pose_median_y, pose_median_theta);
+      
       // Copy in the covariance, converting from 3-D to 6-D
       pf_sample_set_t* set = pf_->sets + pf_->current_set;
       for(int i=0; i<2; i++)
