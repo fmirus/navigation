@@ -860,9 +860,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   }
 
   bool resampled = false;
-  double pose_median_x;
-  double pose_median_y;
-  double pose_median_theta;
+  double pose_median_x = 0.0;
+  double pose_median_y = 0.0;
+  double pose_median_theta = 0.0;
   // If the robot has moved, update the filter
   if(lasers_update_[laser_index])
   {
@@ -959,9 +959,9 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                                          set->samples[i].pose.v[1], 0)),
                       cloud_msg.poses[i]);
       // save hyp means in vector
-      median_x.push_back(set->sample[i].pose.v[0]);
-      median_y.push_back(set->sample[i].pose.v[1]);
-      median_theta.push_back(set->sample[i].pose.v[2]);
+      median_x.push_back(set->samples[i].pose.v[0]);
+      median_y.push_back(set->samples[i].pose.v[1]);
+      median_theta.push_back(set->samples[i].pose.v[2]);
 
     }
     // sort hyp means
@@ -1042,7 +1042,10 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
         p.pose.pose.position.y = pose_median_y;
         tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_median_theta),
                             p.pose.pose.orientation);
-     }
+      }
+      ROS_INFO("mean: %f %f %f median %f %f %f", 
+                hyps[max_weight_hyp].pf_pose_mean.v[0], hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2],
+                pose_median_x, pose_median_y, pose_median_theta);
       // Copy in the covariance, converting from 3-D to 6-D
       pf_sample_set_t* set = pf_->sets + pf_->current_set;
       for(int i=0; i<2; i++)
