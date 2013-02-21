@@ -988,7 +988,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     particlecloud_pub_.publish(cloud_msg);
   }
 
-  if(resampled || force_publication || true)
+  if(resampled || force_publication)
   {
     // Read out the current hypotheses
     double max_weight = 0.0;
@@ -1134,7 +1134,6 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                                         transform_expiration,
                                         global_frame_id_, odom_frame_id_);
     this->tfb_->sendTransform(tmp_tf_stamped);
-
 
     // Is it time to save our last pose to the param server
     ros::Time now = ros::Time::now();
