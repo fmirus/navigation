@@ -1005,6 +1005,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
     pose_median_theta = fmod(pose_median_theta+5*M_PI,2*M_PI)-M_PI;
     pose_perc_mean_theta = fmod(pose_perc_mean_theta+5*M_PI,2*M_PI)-M_PI;
 
+
     particlecloud_pub_.publish(cloud_msg);
   }
 
@@ -1076,6 +1077,10 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                             p.pose.pose.orientation);
         }
       }
+      
+      ROS_INFO("Mean: %.3f %.3f %.3f", hyps[max_weight_hyp].pf_pose_mean.v[0], hyps[max_weight_hyp].pf_pose_mean.v[1], hyps[max_weight_hyp].pf_pose_mean.v[2]);
+      ROS_INFO("Median: %.3f %.3f %.3f", pose_median_x, pose_median_y, pose_median_theta);
+      ROS_INFO("PercMean: %.3f %.3f %.3f", pose_perc_mean_x, pose_perc_mean_y, pose_perc_mean_theta);
       
       // Copy in the covariance, converting from 3-D to 6-D
       pf_sample_set_t* set = pf_->sets + pf_->current_set;
