@@ -1055,7 +1055,7 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       // Fill in the header
       p.header.frame_id = global_frame_id_;
       p.header.stamp = laser_scan->header.stamp;
-      if(use_mean_==1){
+      if(use_mean_ == 1){
       // Copy in the pose
       p.pose.pose.position.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
       p.pose.pose.position.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
@@ -1063,10 +1063,18 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
                             p.pose.pose.orientation);
       }
       else{
-        p.pose.pose.position.x = pose_median_x;
-        p.pose.pose.position.y = pose_median_y;
-        tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_median_theta),
+        if(use_mean_ == 0){
+          p.pose.pose.position.x = pose_median_x;
+          p.pose.pose.position.y = pose_median_y;
+          tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_median_theta),
                             p.pose.pose.orientation);
+        }
+        else{
+          p.pose.pose.position.x = pose_perc_mean_x;
+          p.pose.pose.position.y = pose_perc_mean_y;
+          tf::quaternionTFToMsg(tf::createQuaternionFromYaw(pose_perc_mean_theta),
+                            p.pose.pose.orientation);
+        }
       }
       
       // Copy in the covariance, converting from 3-D to 6-D
