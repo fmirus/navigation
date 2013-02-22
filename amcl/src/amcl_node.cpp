@@ -863,6 +863,11 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
   double pose_median_x = 0.0;
   double pose_median_y = 0.0;
   double pose_median_theta = 0.0;
+
+  double pose_perc_mean_x = 0.0;
+  double pose_perc_mean_y = 0.0;
+  double pose_perc_mean_theta = 0.0;
+
   // If the robot has moved, update the filter
   if(lasers_update_[laser_index])
   {
@@ -982,8 +987,23 @@ AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
       pose_median_y = median_y[(tot_num + 1)/2];
       pose_median_theta = median_theta[(tot_num + 1)/2];
     }
+    int perc_mean_weight = 0;
+    for(int i=tot_num*0.25; i <= tot_num*0.75; i++){
+
+      pose_perc_mean_x += median_x[i];
+      pose_perc_mean_y += median_y[i];
+      pose_perc_mean_theta += median_theta[i];
+
+      perc_mean_weight++;
+    }
+
+    pose_perc_mean_x /= perc_mean_weight;
+    pose_perc_mean_y /= perc_mean_weight;
+    pose_perc_mean_theta /= perc_mean_weight;
+   
     //wrapping theta to [-pi,pi]
     pose_median_theta = fmod(pose_median_theta+5*M_PI,2*M_PI)-M_PI;
+    pose_perc_mean_theta = fmod(pose_perc_mean_theta+5*M_PI,2*M_PI)-M_PI;
 
     particlecloud_pub_.publish(cloud_msg);
   }
