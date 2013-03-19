@@ -126,6 +126,8 @@ class AmclNode
     void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
     void handleMapMessage(const nav_msgs::OccupancyGrid& msg);
+    void driveModeCB(const std_msgs::String::ConstPtr &drive_mode);
+    bool amcl_activated_;
     void freeMapDependentMemory();
     map_t* convertMap( const nav_msgs::OccupancyGrid& map_msg );
     void applyInitialPose();
@@ -195,6 +197,7 @@ class AmclNode
     ros::ServiceServer global_loc_srv_;
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber map_sub_;
+    ros::Subscriber drive_mode_sub_;
 
     amcl_hyp_t* initial_pose_hyp_;
     bool first_map_received_;
@@ -326,6 +329,9 @@ AmclNode::AmclNode() :
   private_nh_.param("initial_cov_aa", init_cov_[2], 
                                (M_PI/12.0) * (M_PI/12.0));
 
+  amcl_activated_ = true;
+  drive_mode_sub_ = nh_.subscribe<std_msgs::String>("in_drive_mode",1,boost::bind(&AmclNode::driveModeCB, this, _1));
+
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
   tf_ = new tf::TransformListener();
@@ -359,6 +365,16 @@ AmclNode::AmclNode() :
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
+}
+
+void AmclNode::driveModeCB(const std_msgs::String::ConstPtr &drive_mode)
+{
+  if((*drive_mode).data == "Autonomous-Absolute"){
+    amcl_activated_ = true;
+  }
+  else{
+    amcl_activated_ = false; 
+  }
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -738,6 +754,8 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
 void
 AmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
+  if(!amcl_activated_) return;
+
   if( map_ == NULL ) {
     return;
   }
