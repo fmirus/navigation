@@ -330,7 +330,7 @@ AmclNode::AmclNode() :
   private_nh_.param("initial_cov_aa", init_cov_[2], 
                                (M_PI/12.0) * (M_PI/12.0));
 
-  amcl_activated_ = true;
+  amcl_activated_ = false;
 
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
@@ -728,10 +728,10 @@ AmclNode::uniformPoseGenerator(void* arg)
 }
 
 bool
-ActivateAmclCallback(amcl_srv::Activate::Request& req, amcl_srv::Activate::Response& resp)
+AmclNode::ActivateAmclCallback(amcl_srv::Activate::Request& req, amcl_srv::Activate::Response& resp)
 {
   amcl_activated_ = req.activate.data;
-  resp.succes.data = true;
+  resp.success.data = true;
   return true;
 }
 
