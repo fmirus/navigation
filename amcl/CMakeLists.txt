@@ -38,6 +38,9 @@ target_link_libraries(bin/amcl amcl_sensors amcl_map amcl_pf)
 #include(CMakeDetermineSystem)
 #if(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
+# Build services
+rosbuild_gernsrv()
+
 # Bags
 rosbuild_download_test_data(http://pr.willowgarage.com/data/amcl/basic_localization_stage_indexed.bag test/basic_localization_stage_indexed.bag 41fe43af189ec71e5e48eb9ed661a655)
 rosbuild_download_test_data(http://pr.willowgarage.com/data/amcl/global_localization_stage_indexed.bag test/global_localization_stage_indexed.bag 752f711cf4f6e8d1d660675e2da096b0)

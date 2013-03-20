@@ -22,6 +22,7 @@
   <depend package="nav_msgs" />
   <depend package="std_srvs" />
   <depend package="dynamic_reconfigure" />
+  <depend package="amcl_srv" />
   
   <!-- For tests -->
   <depend package="map_server"/>

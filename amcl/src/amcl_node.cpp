@@ -44,6 +44,7 @@
 #include "geometry_msgs/Pose.h"
 #include "nav_msgs/GetMap.h"
 #include "std_srvs/Empty.h"
+#include "amcl_srv/Activate.h"
 
 // For transform support
 #include "tf/transform_broadcaster.h"
@@ -120,13 +121,13 @@ class AmclNode
     // Message callbacks
     bool globalLocalizationCallback(std_srvs::Empty::Request& req,
                                     std_srvs::Empty::Response& res);
+    bool ActivateAmclCallback(amcl_srv::Activate::Request& req, amcl_srv::Activate::Response& resp);
     void laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void initialPoseReceived(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void initialPoseReceivedOld(const geometry_msgs::PoseWithCovarianceStampedConstPtr& msg);
     void mapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
     void handleMapMessage(const nav_msgs::OccupancyGrid& msg);
-    void driveModeCB(const std_msgs::String::ConstPtr &drive_mode);
     bool amcl_activated_;
     void freeMapDependentMemory();
     map_t* convertMap( const nav_msgs::OccupancyGrid& map_msg );
@@ -195,9 +196,9 @@ class AmclNode
     ros::Publisher pose_pub_;
     ros::Publisher particlecloud_pub_;
     ros::ServiceServer global_loc_srv_;
+    ros::ServiceServer ss_activate_;
     ros::Subscriber initial_pose_sub_old_;
     ros::Subscriber map_sub_;
-    ros::Subscriber drive_mode_sub_;
 
     amcl_hyp_t* initial_pose_hyp_;
     bool first_map_received_;
@@ -330,7 +331,6 @@ AmclNode::AmclNode() :
                                (M_PI/12.0) * (M_PI/12.0));
 
   amcl_activated_ = true;
-  drive_mode_sub_ = nh_.subscribe<std_msgs::String>("in_drive_mode",1,boost::bind(&AmclNode::driveModeCB, this, _1));
 
   cloud_pub_interval.fromSec(1.0);
   tfb_ = new tf::TransformBroadcaster();
@@ -341,6 +341,8 @@ AmclNode::AmclNode() :
   global_loc_srv_ = nh_.advertiseService("global_localization", 
 					 &AmclNode::globalLocalizationCallback,
                                          this);
+  ss_activate_ = nh_.advertiseService("activate_amcl", &AmclNode::ActivateAmclCallback, this);
+
   laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "scan", 100);
   laser_scan_filter_ = 
           new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, 
@@ -365,16 +367,6 @@ AmclNode::AmclNode() :
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);
-}
-
-void AmclNode::driveModeCB(const std_msgs::String::ConstPtr &drive_mode)
-{
-  if((*drive_mode).data == "Autonomous-Absolute"){
-    amcl_activated_ = true;
-  }
-  else{
-    amcl_activated_ = false; 
-  }
 }
 
 void AmclNode::reconfigureCB(AMCLConfig &config, uint32_t level)
@@ -733,6 +725,14 @@ AmclNode::uniformPoseGenerator(void* arg)
   }
 #endif
   return p;
+}
+
+bool
+ActivateAmclCallback(amcl_srv::Activate::Request& req, amcl_srv::Activate::Response& resp)
+{
+  amcl_activated_ = req.activate.data;
+  resp.succes.data = true;
+  return true;
 }
 
 bool

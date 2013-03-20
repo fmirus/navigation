@@ -1,0 +1,15 @@
+<package>
+  <description brief="amcl_srv">
+
+     amcl_srv
+
+  </description>
+  <author>frm</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/amcl_srv</url>
+  <depend package="std_msgs"/>
+
+</package>
+
+
